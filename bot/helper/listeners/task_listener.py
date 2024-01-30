@@ -293,15 +293,15 @@ class TaskListener(TaskConfig):
                     msg += f"\n\nPath: <code>{rclonePath}</code>"
                 if (
                     rclonePath
-                    and (RCLONE_SERVE_URL := config_dict["RCLONE_SERVE_URL"])
+                    and (RCLONE_SERVE_URL := config_dict["INDEX_URL"])
                     and not self.privateLink
                 ):
                     remote, path = rclonePath.split(":", 1)
                     url_path = rutils.quote(f"{path}")
-                    share_url = f"{RCLONE_SERVE_URL}/{remote}/{url_path}"
+                    share_url = f"{RCLONE_SERVE_URL}/{url_path}"
                     if mime_type == "Folder":
                         share_url += "/"
-                    buttons.ubutton("🔗 Rclone Link", share_url)
+                    buttons.ubutton("⚡ Index Link", share_url)
                 if not rclonePath and dir_id:
                     INDEX_URL = ""
                     if self.privateLink:
