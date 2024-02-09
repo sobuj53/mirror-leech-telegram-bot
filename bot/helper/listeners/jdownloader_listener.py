@@ -1,4 +1,4 @@
-from asyncio import sleep
+from asyncio import sleep, wait_for
 
 from bot import Intervals, jd_lock, jd_downloads
 from bot.helper.ext_utils.bot_utils import new_task, sync_to_async, retry_function
@@ -38,10 +38,16 @@ async def _jd_listener():
                 Intervals["jd"] = ""
                 break
             try:
-                packages = await sync_to_async(
-                    jdownloader.device.downloads.query_packages, [{"finished": True}]
+                packages = await wait_for(
+                    sync_to_async(
+                        jdownloader.device.downloads.query_packages,
+                        [{"finished": True}],
+                    ), timeout=10
                 )
             except:
+                await sync_to_async(jdownloader.reconnect) or await sync_to_async(
+                    jdownloader.jdconnect
+                )
                 continue
             finished = [
                 pack["uuid"] for pack in packages if pack.get("finished", False)
