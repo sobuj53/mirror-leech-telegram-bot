@@ -2,6 +2,7 @@ from psutil import cpu_percent, virtual_memory, disk_usage
 from pyrogram.filters import command, regex
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from time import time
+from asyncio import gather
 
 from bot import (
     task_dict_lock,
@@ -12,7 +13,7 @@ from bot import (
     Intervals,
     bot,
 )
-from bot.helper.ext_utils.bot_utils import new_task, sync_to_async
+from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.status_utils import (
     MirrorStatus,
     get_readable_file_size,
@@ -101,8 +102,9 @@ async def status_pages(_, query):
         up_speed = 0
         seed_speed = 0
         async with task_dict_lock:
-            for download in task_dict.values():
-                match await sync_to_async(download.status):
+            statuses = await gather(*[tk.status() for tk in task_dict.values()])
+            for download, status in zip(task_dict.values(), statuses):
+                match status:
                     case MirrorStatus.STATUS_DOWNLOADING:
                         tasks["Download"] += 1
                         dl_speed += speed_string_to_bytes(download.speed())
@@ -138,7 +140,7 @@ async def status_pages(_, query):
 
         msg = f"""DL: {tasks['Download']} | UP: {tasks['Upload']} | SD: {tasks['Seed']} | AR: {tasks['Archive']}
 EX: {tasks['Extract']} | SP: {tasks['Split']} | QD: {tasks['QueueDl']} | QU: {tasks['QueueUp']}
-CL: {tasks['Clone']} | CH: {tasks['CheckUp']} | PA: {tasks['Pause']} | SV: {tasks['SamVid']}
+CL: {tasks['Clone']} | CK: {tasks['CheckUp']} | PA: {tasks['Pause']} | SV: {tasks['SamVid']}
 CM: {tasks['ConvertMedia']}
 
 ODLS: {get_readable_file_size(dl_speed)}/s

@@ -1,7 +1,7 @@
 from asyncio import sleep, wait_for
 
 from bot import Intervals, jd_lock, jd_downloads, LOGGER
-from bot.helper.ext_utils.bot_utils import new_task, sync_to_async, retry_function
+from bot.helper.ext_utils.bot_utils import new_task, retry_function
 from bot.helper.ext_utils.jdownloader_booter import jdownloader
 from bot.helper.ext_utils.status_utils import getTaskByGid
 
@@ -65,15 +65,13 @@ async def _jd_listener():
             try:
                 await wait_for(retry_function(jdownloader.device.jd.version), timeout=5)
             except:
-                is_connected = await sync_to_async(jdownloader.jdconnect)
+                is_connected = await jdownloader.jdconnect()
                 if not is_connected:
                     LOGGER.error(jdownloader.error)
                     continue
-                await sync_to_async(jdownloader.connectToDevice)
+                await jdownloader.connectToDevice()
             try:
-                packages = await sync_to_async(
-                    jdownloader.device.downloads.query_packages, [{"finished": True}]
-                )
+                packages = await jdownloader.device.downloads.query_packages([{"finished": True}])
             except:
                 continue
             finished = [
