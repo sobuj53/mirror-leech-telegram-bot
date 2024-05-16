@@ -89,6 +89,7 @@ class TaskConfig:
         self.size = 0
         self.isLeech = False
         self.isQbit = False
+        self.isNzb = False
         self.isJd = False
         self.isClone = False
         self.isYtDlp = False
@@ -164,7 +165,7 @@ class TaskConfig:
             else ""
         )
         if self.nameSub:
-            self.nameSub = [x.split(" : ") for x in self.nameSub.split("|")]
+            self.nameSub = [x.split(" : ") for x in self.nameSub.split(" | ")]
             self.seed = False
         self.extensionFilter = (
             self.userDict.get("excluded_extensions") or GLOBAL_EXTENSION_FILTER
@@ -406,6 +407,7 @@ class TaskConfig:
             self.isQbit,
             self.isLeech,
             self.isJd,
+            self.isNzb,
             self.sameDir,
             self.bulk,
             self.multiTag,

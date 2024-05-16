@@ -7,18 +7,24 @@ programming in Python.
 
 ## qBittorrent
 
-- Select files from a Torrent before and during downloading (Requires Base URL) (task option)
+- Select files from a Torrent before and during download (Requires Base URL) (task option)
 - Seed torrents to a specific ratio and time (task option)
 - Edit Global Options while the bot is running from bot settings (global option)
 
 ## Aria2c
 
-- Select files from a Torrent before and during downloading (Requires Base URL) (task option)
+- Select files from a Torrent before and during download (Requires Base URL) (task option)
 - Seed torrents to a specific ratio and time (task option)
 - Netrc support (global option)
 - Direct link authentication for a specific link while using the bot (it will work even if only the username or password
   is provided) (task option)
 - Edit Global Options while the bot is running from bot settings (global option)
+
+## Sabnzbd
+
+- Remove files from job before and during download (Requires Base URL) (task option)
+- Edit Global Options while the bot is running from bot settings (global option)
+- Servers menu to edit/add/remove usenet servers
 
 ## TG Upload/Download
 
@@ -252,12 +258,18 @@ quotes, even if it's `Int`, `Bool` or `List`.
 - `USE_SERVICE_ACCOUNTS`: Whether to use Service Accounts or not, with google-api-python-client. For this to work
   see [Using Service Accounts](https://github.com/anasty17/mirror-leech-telegram-bot#generate-service-accounts-what-is-service-account)
   section below. Default is `False`. `Bool`
-- `NAME_SUBSTITUTE`: Add word/letter/sentense/pattern to remove or replace with other words with sensitive case or without. **Note**: Seed will get disbaled while using this option
-  * Example: 'text : code : s|mirror : leech|tea :  : s|clone'
+- `NAME_SUBSTITUTE`: Add word/letter/sentense/pattern to remove or replace with other words with sensitive case or without.**Notes**: 
+  1. Seed will get disbaled while using this option
+  2. Before any character you must add \, those are the characters: `\^$.|?*+()[]{}-`
+  * Example-1: `text : code : s | mirror : leech | tea :  : s | clone`
     - text will get replaced by code with sensitive case
     - mirror will get replaced by leech
     - tea will get removed with sensitive case
     - clone will get removed
+  * Example-2: `\(text\) | \[test\] : test | \\text\\ : text : s`
+    - `(text)` will get removed
+    - `[test]` will get replaced by test
+    - `\text\` will get replaced by text with sensitive case
 
 **3. GDrive Tools**
 
@@ -315,13 +327,25 @@ quotes, even if it's `Int`, `Bool` or `List`.
     - **Qbittorrent NOTE**: If your facing ram issues then set limit for `MaxConnections`,
       decrease `AsyncIOThreadsCount`, set limit of `DiskWriteCacheSize` to `32` and decrease `MemoryWorkingSetLimit`
       from qbittorrent.conf or bsetting command.
+    - Open port 8090 in your vps to access webui from any device. username: mltb, password: mltbmltb
 
 **8. JDownloader**
 
 - `JD_EMAIL`: jdownlaoder email sign up on [JDownloader](https://my.jdownloader.org/)
 - `JD_PASS`: jdownlaoder password
 
-**9. RSS**
+**9. Sabnzbd**
+
+- `USENET_SERVERS`: list of dictionaries, you can add as much as you want and there is a button for servers in sabnzbd settings to edit current servers and add new servers.
+
+  ***[{'name': 'main', 'host': '', 'port': 563, 'timeout': 60, 'username': '', 'password': '', 'connections': 8, 'ssl': 1, 'ssl_verify': 2, 'ssl_ciphers': '', 'enable': 1, 'required': 0, 'optional': 0, 'retention': 0, 'send_group': 0, 'priority': 0}]***
+
+  - [READ THIS FOR MORE INFORMATION](https://sabnzbd.org/wiki/configuration/4.2/servers)
+
+  - **NOTE**: Enable port 8070 in your vps to access sabnzbd full web interface
+  - Open port 8070 in your vps to access web interface from any device.
+
+**10. RSS**
 
 - `RSS_DELAY`: Time in seconds for rss refresh interval. Recommended `600` second at least. Default is `600` in
   sec. `Int`
@@ -333,7 +357,7 @@ quotes, even if it's `Int`, `Bool` or `List`.
       with `USER_STRING_SESSION` add group id for `RSS_CHAT`. If `DATABASE_URL` not added you will miss the feeds while
       bot offline.
 
-**10. Queue System**
+**11. Queue System**
 
 - `QUEUE_ALL`: Number of parallel tasks of downloads and uploads. For example if 20 task added and `QUEUE_ALL` is `8`,
   then the summation of uploading and downloading tasks are 8 and the rest in queue. `Int`. **NOTE**: if you want to
@@ -342,7 +366,7 @@ quotes, even if it's `Int`, `Bool` or `List`.
 - `QUEUE_DOWNLOAD`: Number of all parallel downloading tasks. `Int`
 - `QUEUE_UPLOAD`: Number of all parallel uploading tasks. `Int`
 
-**11. Torrent Search**
+**12. Torrent Search**
 
 - `SEARCH_API_LINK`: Search api app link. Get your api from deploying
   this [repository](https://github.com/Ryuk-me/Torrent-Api-py). `Str`
@@ -465,17 +489,19 @@ sudo docker compose logs --follow
 mirror - or /m Mirror
 qbmirror - or /qm Mirror torrent using qBittorrent
 jdmirror - or /jm Mirror using jdownloader
+nzbmirror - or /nm Mirror using sabnzbd
 ytdl - or /y Mirror yt-dlp supported links
 leech - or /l Upload to telegram
 qbleech - or /ql Leech torrent using qBittorrent
 jdleech - or /jl Leech using jdownloader
+nzbleech - or /nl Leech using sabnzbd
 ytdlleech - or /yl Leech yt-dlp supported links
 clone - Copy file/folder to Drive
 count - Count file/folder from GDrive
 usetting - or /us User settings
 bsetting - or /bs Bot settings
 status - Get Mirror Status message
-btsel - Select files from torrent
+sel - Select files from torrent
 rss - Rss menu
 list - Search files in Drive
 search - Search for torrents with API
