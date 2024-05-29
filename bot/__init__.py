@@ -251,7 +251,7 @@ USENET_SERVERS = environ.get("USENET_SERVERS", "")
 try:
     if len(USENET_SERVERS) == 0:
         USENET_SERVERS = []
-    elif not eval(USENET_SERVERS)[0]["host"]:
+    elif (us := eval(USENET_SERVERS)) and not us[0].get("host"):
         USENET_SERVERS = []
     else:
         USENET_SERVERS = eval(USENET_SERVERS)
@@ -320,7 +320,7 @@ if LEECH_DUMP_CHAT.isdigit() or LEECH_DUMP_CHAT.startswith("-"):
     LEECH_DUMP_CHAT = int(LEECH_DUMP_CHAT)
 
 STATUS_LIMIT = environ.get("STATUS_LIMIT", "")
-STATUS_LIMIT = 10 if len(STATUS_LIMIT) == 0 else int(STATUS_LIMIT)
+STATUS_LIMIT = 4 if len(STATUS_LIMIT) == 0 else int(STATUS_LIMIT)
 
 CMD_SUFFIX = environ.get("CMD_SUFFIX", "")
 

@@ -160,9 +160,9 @@ class TaskConfig:
         self.nameSub = (
             self.nameSub
             or self.userDict.get("name_sub", False)
-            or config_dict["NAME_SUBSTITUTE"]
+            or (config_dict["NAME_SUBSTITUTE"]
             if "name_sub" not in self.userDict
-            else ""
+            else "")
         )
         if self.nameSub:
             self.nameSub = [x.split(" : ") for x in self.nameSub.split(" | ")]
@@ -172,7 +172,6 @@ class TaskConfig:
             if "excluded_extensions" not in self.userDict
             else ["aria2", "!qB"]
         )
-        LOGGER.info(self.extensionFilter)
         if self.link not in ["rcl", "gdl"]:
             if not self.isYtDlp and not self.isJd:
                 await self.isTokenExists(self.link, "dl")
