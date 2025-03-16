@@ -7,13 +7,12 @@ from asyncio import (
     sleep,
 )
 from asyncio.subprocess import PIPE
-from os import path as ospath, cpu_count
+from os import path as ospath
 from re import search as re_search, escape
 from time import time
 from aioshutil import rmtree
 
-from ... import LOGGER
-from ...core.config_manager import Config
+from ... import LOGGER, cpu_no, DOWNLOAD_DIR
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, is_archive, is_archive_split
 from .status_utils import time_to_seconds
@@ -21,10 +20,10 @@ from .status_utils import time_to_seconds
 
 async def create_thumb(msg, _id=""):
     if not _id:
-        _id = msg.id
-        path = f"{Config.DOWNLOAD_DIR}Thumbnails"
+        _id = time()
+        path = f"{DOWNLOAD_DIR}thumbnails"
     else:
-        path = "Thumbnails"
+        path = "thumbnails"
     await makedirs(path, exist_ok=True)
     photo_dir = await msg.download()
     output = ospath.join(path, f"{_id}.jpg")
@@ -138,7 +137,7 @@ async def take_ss(video_file, ss_nb) -> bool:
                 "-frames:v",
                 "1",
                 "-threads",
-                f"{max(1, cpu_count() // 2)}",
+                f"{max(1, cpu_no // 2)}",
                 output,
             ]
             cap_time += interval
@@ -164,7 +163,7 @@ async def take_ss(video_file, ss_nb) -> bool:
 
 
 async def get_audio_thumbnail(audio_file):
-    output_dir = f"{Config.DOWNLOAD_DIR}Thumbnails"
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
     cmd = [
@@ -178,7 +177,7 @@ async def get_audio_thumbnail(audio_file):
         "-vcodec",
         "copy",
         "-threads",
-        f"{max(1, cpu_count() // 2)}",
+        f"{max(1, cpu_no // 2)}",
         output,
     ]
     try:
@@ -197,7 +196,7 @@ async def get_audio_thumbnail(audio_file):
 
 
 async def get_video_thumbnail(video_file, duration):
-    output_dir = f"{Config.DOWNLOAD_DIR}Thumbnails"
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
     if duration is None:
@@ -221,7 +220,7 @@ async def get_video_thumbnail(video_file, duration):
         "-frames:v",
         "1",
         "-threads",
-        f"{max(1, cpu_count() // 2)}",
+        f"{max(1, cpu_no // 2)}",
         output,
     ]
     try:
@@ -245,7 +244,7 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
     dirpath = await take_ss(video_file, ss_nb)
     if not dirpath:
         return None
-    output_dir = f"{Config.DOWNLOAD_DIR}Thumbnails"
+    output_dir = f"{DOWNLOAD_DIR}thumbnails"
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
     cmd = [
@@ -266,7 +265,7 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
         "-f",
         "mjpeg",
         "-threads",
-        f"{max(1, cpu_count() // 2)}",
+        f"{max(1, cpu_no // 2)}",
         output,
     ]
     try:
@@ -358,8 +357,8 @@ class FFMpeg:
                         )
                         try:
                             self._progress_raw = (
-                                self._processed_time / self._total_time * 100
-                            )
+                                self._processed_time * 100
+                            ) / self._total_time
                             self._eta_raw = (
                                 self._total_time - self._processed_time
                             ) / self._time_rate
@@ -446,7 +445,7 @@ class FFMpeg:
                 "-c:a",
                 "aac",
                 "-threads",
-                f"{max(1, cpu_count() // 2)}",
+                f"{max(1, cpu_no // 2)}",
                 output,
             ]
             if ext == "mp4":
@@ -470,7 +469,7 @@ class FFMpeg:
                 "-c",
                 "copy",
                 "-threads",
-                f"{max(1, cpu_count() // 2)}",
+                f"{max(1, cpu_no // 2)}",
                 output,
             ]
         if self._listener.is_cancelled:
@@ -517,7 +516,7 @@ class FFMpeg:
             "-i",
             audio_file,
             "-threads",
-            f"{max(1, cpu_count() // 2)}",
+            f"{max(1, cpu_no // 2)}",
             output,
         ]
         if self._listener.is_cancelled:
@@ -597,7 +596,7 @@ class FFMpeg:
             "-c:a",
             "aac",
             "-threads",
-            f"{max(1, cpu_count() // 2)}",
+            f"{max(1, cpu_no // 2)}",
             output_file,
         ]
 
@@ -662,7 +661,7 @@ class FFMpeg:
                 "-c",
                 "copy",
                 "-threads",
-                f"{max(1, cpu_count() // 2)}",
+                f"{max(1, cpu_no // 2)}",
                 out_path,
             ]
             if not multi_streams:

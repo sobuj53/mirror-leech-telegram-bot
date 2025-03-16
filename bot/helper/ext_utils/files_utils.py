@@ -1,12 +1,9 @@
-from aioshutil import rmtree as aiormtree
+from aioshutil import rmtree as aiormtree, move
 from asyncio import create_subprocess_exec, sleep, wait_for
 from asyncio.subprocess import PIPE
 from magic import Magic
-from os import walk, path as ospath, makedirs, readlink
+from os import walk, path as ospath, readlink
 from re import split as re_split, I, search as re_search, escape
-from shutil import rmtree
-from subprocess import run as srun
-from sys import exit
 from aiofiles.os import (
     remove,
     path as aiopath,
@@ -17,8 +14,8 @@ from aiofiles.os import (
     makedirs as aiomakedirs,
 )
 
-from ... import aria2, LOGGER, qbittorrent_client
-from ...core.config_manager import Config
+from ... import LOGGER, DOWNLOAD_DIR
+from ...core.torrent_manager import TorrentManager
 from .bot_utils import sync_to_async, cmd_exec
 from .exceptions import NotSupportedExtractionArchive
 
@@ -90,9 +87,11 @@ ARCH_EXT = [
 ]
 
 
-FIRST_SPLIT_REGEX = r"(\.|_)part0*1\.rar$|(\.|_)7z\.0*1$|(\.|_)zip\.0*1$|^(?!.*(\.|_)part\d+\.rar$).*\.rar$"
+FIRST_SPLIT_REGEX = (
+    r"\.part0*1\.rar$|\.7z\.0*1$|\.zip\.0*1$|^(?!.*\.part\d+\.rar$).*\.rar$"
+)
 
-SPLIT_REGEX = r"\.r\d+$|\.7z\.\d+$|\.z\d+$|\.zip\.\d+$"
+SPLIT_REGEX = r"\.r\d+$|\.7z\.\d+$|\.z\d+$|\.zip\.\d+$|\.part\d+\.rar$"
 
 
 def is_first_archive_split(file):
@@ -100,7 +99,7 @@ def is_first_archive_split(file):
 
 
 def is_archive(file):
-    return file.lower().endswith(tuple(ARCH_EXT))
+    return file.strip().lower().endswith(tuple(ARCH_EXT))
 
 
 def is_archive_split(file):
@@ -128,35 +127,14 @@ async def clean_download(opath):
             LOGGER.error(str(e))
 
 
-def clean_all():
-    aria2.remove_all(True)
-    qbittorrent_client.torrents_delete(torrent_hashes="all")
+async def clean_all():
+    await TorrentManager.remove_all()
     try:
         LOGGER.info("Cleaning Download Directory")
-        rmtree(Config.DOWNLOAD_DIR, ignore_errors=True)
-        if ospath.exists("Thumbnails"):
-            rmtree("Thumbnails", ignore_errors=True)
+        await aiormtree(DOWNLOAD_DIR, ignore_errors=True)
     except:
         pass
-    makedirs(Config.DOWNLOAD_DIR, exist_ok=True)
-
-
-def exit_clean_up(signal, frame):
-    try:
-        LOGGER.info("Please wait! Bot clean up and stop the running downloads...")
-        clean_all()
-        srun(
-            [
-                "pkill",
-                "-9",
-                "-f",
-                "gunicorn|aria2c|qbittorrent-nox|ffmpeg|java|sabnzbdplus|7z|split",
-            ]
-        )
-        exit(0)
-    except KeyboardInterrupt:
-        LOGGER.warning("Force Exiting before the cleanup finishes!")
-        exit(1)
+    await aiomakedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 async def clean_unwanted(opath):
@@ -164,13 +142,9 @@ async def clean_unwanted(opath):
     for dirpath, _, files in await sync_to_async(walk, opath, topdown=False):
         for filee in files:
             f_path = ospath.join(dirpath, filee)
-            if (
-                filee.endswith(".!qB")
-                or filee.endswith(".parts")
-                and filee.startswith(".")
-            ):
+            if filee.strip().endswith(".parts") and filee.startswith("."):
                 await remove(f_path)
-        if dirpath.endswith(".unwanted"):
+        if dirpath.strip().endswith(".unwanted"):
             await aiormtree(dirpath, ignore_errors=True)
     for dirpath, _, files in await sync_to_async(walk, opath, topdown=False):
         if not await listdir(dirpath):
@@ -192,20 +166,19 @@ async def get_path_size(opath):
     return total_size
 
 
-async def count_files_and_folders(opath, extension_filter):
+async def count_files_and_folders(opath):
     total_files = 0
     total_folders = 0
     for _, dirs, files in await sync_to_async(walk, opath):
         total_files += len(files)
-        for f in files:
-            if f.lower().endswith(tuple(extension_filter)):
-                total_files -= 1
         total_folders += len(dirs)
     return total_folders, total_files
 
 
 def get_base_name(orig_path):
-    extension = next((ext for ext in ARCH_EXT if orig_path.lower().endswith(ext)), "")
+    extension = next(
+        (ext for ext in ARCH_EXT if orig_path.strip().lower().endswith(ext)), ""
+    )
     if extension != "":
         return re_split(f"{extension}$", orig_path, maxsplit=1, flags=I)[0]
     else:
@@ -235,6 +208,33 @@ def get_mime_type(file_path):
     mime_type = mime.from_file(file_path)
     mime_type = mime_type or "text/plain"
     return mime_type
+
+
+async def remove_excluded_files(fpath, ee):
+    for root, _, files in await sync_to_async(walk, fpath):
+        for f in files:
+            if f.strip().lower().endswith(tuple(ee)):
+                await remove(ospath.join(root, f))
+
+
+async def move_and_merge(source, destination, mid):
+    if not await aiopath.exists(destination):
+        await aiomakedirs(destination, exist_ok=True)
+    for item in await listdir(source):
+        item = item.strip()
+        src_path = f"{source}/{item}"
+        dest_path = f"{destination}/{item}"
+        if await aiopath.isdir(src_path):
+            if await aiopath.exists(dest_path):
+                await move_and_merge(src_path, dest_path, mid)
+            else:
+                await move(src_path, dest_path)
+        else:
+            if item.endswith((".aria2", ".!qB")):
+                continue
+            if await aiopath.exists(dest_path):
+                dest_path = f"{destination}/{mid}-{item}"
+            await move(src_path, dest_path)
 
 
 async def join_files(opath):
@@ -311,7 +311,7 @@ class SevenZ:
         return self._percentage
 
     async def _sevenz_progress(self):
-        pattern = r"(\d+)\s+bytes"
+        pattern = r"(\d+)\s+bytes|Total Physical Size\s*=\s*(\d+)"
         while not (
             self._listener.subproc.returncode is not None
             or self._listener.is_cancelled
@@ -323,7 +323,7 @@ class SevenZ:
                 break
             line = line.decode().strip()
             if match := re_search(pattern, line):
-                self._listener.subsize = int(match.group(1))
+                self._listener.subsize = int(match[1] or match[2])
             await sleep(0.05)
         s = b""
         while not (
@@ -410,8 +410,6 @@ class SevenZ:
             "-bse1",
             "-bb3",
         ]
-        if not self._listener.is_file:
-            cmd.extend(f"-xr!*.{ext}" for ext in self._listener.extension_filter)
         if self._listener.is_leech and int(size) > self._listener.split_size:
             if not pswd:
                 del cmd[4]
